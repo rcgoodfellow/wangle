@@ -7,7 +7,10 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -fPIC")
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_C_COMPILER clang)
+
+set(CMAKE_CXX_FLAGS "-std=c++14 -fPIC -fcolor-diagnostics")
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -108,7 +111,13 @@ endif()
       gmock
       URL ${GMOCK_URL}
       PREFIX ${CMAKE_SOURCE_DIR}/gmock
+      BUILD_BYPRODUCTS 
+        ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/libgmock.a 
+        ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/libgmock_main.a
+        ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest.a
+        ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest_main.a
       # Disable install step
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang
       INSTALL_COMMAND ""
       LOG_DOWNLOAD ON
       LOG_CONFIGURE ON
@@ -120,6 +129,14 @@ endif()
   add_dependencies(libgmock gmock)
   add_library(libgmock_main IMPORTED STATIC GLOBAL)
   add_dependencies(libgmock_main gmock)
+  
+  add_library(libgtest IMPORTED STATIC GLOBAL)
+  set_property(TARGET libgtest PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest.a")
+  add_dependencies(libgtest gmock)
+  
+  add_library(libgtest_main IMPORTED STATIC GLOBAL)
+  set_property(TARGET libgtest_main PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest_main.a")
+  add_dependencies(libgtest_main gmock)
 
   # Set gmock properties
   ExternalProject_Get_Property(gmock source_dir binary_dir)
@@ -136,9 +153,13 @@ endif()
   include_directories("${source_dir}/gtest/include")
 
   macro(add_gtest test_source test_name)
-  add_executable(${test_name} ${test_source})
-  target_link_libraries(${test_name} wangle libgmock libgmock_main)
-  add_test(${test_name} bin/${test_name})
+    add_executable(${test_name} ${test_source})
+    target_link_libraries(${test_name} 
+      wangle 
+      libgmock libgmock_main 
+      event double-conversion 
+      boost_context boost_regex)
+    add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
   # this test segfaults

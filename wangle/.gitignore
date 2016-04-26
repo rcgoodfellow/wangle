@@ -8,3 +8,6 @@ install_manifest.txt
 gmock/
 bin/
 lib/
+
+*.sw*
+build
