@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_C_COMPILER clang)
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -fPIC -fcolor-diagnostics")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fPIC -fcolor-diagnostics")
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -130,14 +130,6 @@ endif()
   add_library(libgmock_main IMPORTED STATIC GLOBAL)
   add_dependencies(libgmock_main gmock)
   
-  add_library(libgtest IMPORTED STATIC GLOBAL)
-  set_property(TARGET libgtest PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest.a")
-  add_dependencies(libgtest gmock)
-  
-  add_library(libgtest_main IMPORTED STATIC GLOBAL)
-  set_property(TARGET libgtest_main PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest_main.a")
-  add_dependencies(libgtest_main gmock)
-
   # Set gmock properties
   ExternalProject_Get_Property(gmock source_dir binary_dir)
   set_target_properties(libgmock PROPERTIES
