@@ -83,6 +83,9 @@ target_link_libraries(wangle
   ${FOLLY_LIBRARIES}
   ${Boost_LIBRARIES}
   ${OPENSSL_LIBRARIES}
+  double-conversion
+  boost_context
+  boost_regex
   -lglog
   -lgflags
   -latomic)
@@ -118,7 +121,7 @@ endif()
         ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest.a
         ${CMAKE_SOURCE_DIR}/gmock/src/gmock-build/gtest/libgtest_main.a
       # Disable install step
-      CMAKE_ARGS -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang
+      CMAKE_ARGS -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_FLAGS=-stdlib=libc++
       INSTALL_COMMAND ""
       LOG_DOWNLOAD ON
       LOG_CONFIGURE ON
@@ -148,10 +151,14 @@ endif()
   macro(add_gtest test_source test_name)
     add_executable(${test_name} ${test_source})
     target_link_libraries(${test_name} 
+      double-conversion
+      boost_context 
+      boost_regex
+      event 
       wangle 
-      libgmock libgmock_main 
-      event double-conversion 
-      boost_context boost_regex)
+      libgmock 
+      libgmock_main 
+      )
     add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
