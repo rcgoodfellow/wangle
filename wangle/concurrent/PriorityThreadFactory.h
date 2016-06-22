@@ -12,10 +12,9 @@
 
 #include <wangle/concurrent/ThreadFactory.h>
 
-#include <sys/time.h>
-#include <sys/resource.h>
-
 #include <folly/MoveWrapper.h>
+#include <folly/portability/SysResource.h>
+#include <folly/portability/SysTime.h>
 
 namespace wangle {
 

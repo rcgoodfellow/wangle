@@ -20,7 +20,7 @@ namespace wangle {
 
 ConnectionManager::ConnectionManager(folly::EventBase* eventBase,
     milliseconds timeout, Callback* callback)
-  : connTimeouts_(new HHWheelTimer(eventBase)),
+  : connTimeouts_(HHWheelTimer::newTimer(eventBase)),
     callback_(callback),
     eventBase_(eventBase),
     drainIterator_(conns_.end()),
@@ -247,7 +247,7 @@ ConnectionManager::dropAllConnections() {
 
   drainHelper_.setShutdownState(ShutdownState::CLOSE_WHEN_IDLE_COMPLETE);
   // Iterate through our connection list, and drop each connection.
-  VLOG(3) << "connections to drop: " << conns_.size();
+  VLOG(2) << "connections to drop: " << conns_.size();
   drainHelper_.cancelTimeout();
   unsigned i = 0;
   while (!conns_.empty()) {
@@ -323,7 +323,7 @@ ConnectionManager::dropIdleConnections(size_t num) {
     }
     ManagedConnection& conn = *it;
     idleIterator_++;
-    conn.timeoutExpired();
+    conn.dropConnection();
     count++;
   }
 

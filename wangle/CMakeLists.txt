@@ -21,6 +21,8 @@ find_package(Folly REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread filesystem)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
+find_library(GLOG_LIBRARY_PATH glog)
+find_library(GFLAGS_LIBRARY_PATH gflags)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/..
@@ -54,6 +56,7 @@ set(WANGLE_SOURCES
   acceptor/ManagedConnection.cpp
   acceptor/SocketOptions.cpp
   acceptor/SSLAcceptorHandshakeHelper.cpp
+  acceptor/TLSPlaintextHandshakeManager.cpp
   acceptor/TransportInfo.cpp
   bootstrap/ServerBootstrap.cpp
   channel/FileRegion.cpp
@@ -61,6 +64,7 @@ set(WANGLE_SOURCES
   codec/LengthFieldBasedFrameDecoder.cpp
   codec/LengthFieldPrepender.cpp
   codec/LineBasedFrameDecoder.cpp
+  concurrent/ThreadedExecutor.cpp
   concurrent/CPUThreadPoolExecutor.cpp
   concurrent/Codel.cpp
   concurrent/GlobalExecutor.cpp
@@ -176,6 +180,7 @@ endif()
   add_gtest(channel/test/PipelineTest.cpp PipelineTest)
   add_gtest(codec/CodecTest.cpp CodecTest)
   add_gtest(concurrent/test/AsyncTest.cpp AsyncTest)
+  add_gtest(concurrent/test/ThreadedExecutorTest.cpp ThreadedExecutorTest)
   add_gtest(concurrent/test/CodelTest.cpp CodelTest)
   add_gtest(concurrent/test/GlobalExecutorTest.cpp GlobalExecutorTest)
   add_gtest(concurrent/test/ThreadPoolExecutorTest ThreadPoolExecutorTest)

@@ -89,6 +89,11 @@ struct ServerSocketConfig {
   std::chrono::milliseconds connectionIdleTimeout{600000};
 
   /**
+   * The number of milliseconds a ssl handshake can timeout (60s)
+   */
+  std::chrono::milliseconds sslHandshakeTimeout{60000};
+
+  /**
    * The address to bind to.
    */
   folly::SocketAddress bindAddress;
@@ -97,6 +102,13 @@ struct ServerSocketConfig {
    * Options for controlling the SSL cache.
    */
   SSLCacheOptions sslCacheOptions{std::chrono::seconds(0), 20480, 200};
+
+  /**
+   * Determines whether or not to allow insecure connections over a secure
+   * port. Can be used to multiplex TLS and plaintext on the same port for
+   * some services.
+   */
+  bool allowInsecureConnectionsOnSecureServer{false};
 
   /**
    * The initial TLS ticket seeds.
@@ -118,6 +130,19 @@ struct ServerSocketConfig {
    * Maximum number of concurrent pending SSL handshakes
    */
   uint32_t maxConcurrentSSLHandshakes{30720};
+
+  /**
+   * Whether to enable TCP fast open. Before turning this
+   * option on, for it to work, it must also be enabled on the
+   * machine via /proc/sys/net/ipv4/tcp_fastopen, and the keys for
+   * TFO should also be set at /proc/sys/net/ipv4/tcp_fastopen_key
+   */
+  bool enableTCPFastOpen{false};
+
+  /**
+   * Limit on size of queue of TFO requests by clients.
+   */
+  uint32_t fastOpenQueueSize{100};
 
  private:
   folly::AsyncSocket::OptionMap socketOptions_;

@@ -13,17 +13,18 @@
 #include <wangle/ssl/SSLContextManager.h>
 #include <wangle/acceptor/AcceptorHandshakeManager.h>
 #include <wangle/acceptor/SSLAcceptorHandshakeHelper.h>
+#include <wangle/acceptor/TLSPlaintextHandshakeManager.h>
 
 #include <fcntl.h>
 #include <folly/ScopeGuard.h>
 #include <folly/io/async/EventBase.h>
 #include <fstream>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>
+#include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 #include <gflags/gflags.h>
-#include <unistd.h>
 
 using folly::AsyncSocket;
 using folly::AsyncSSLSocket;
@@ -141,13 +142,16 @@ bool Acceptor::canAccept(const SocketAddress& address) {
 
   // Take care of the connection counts across all acceptors.
   // Expensive since a lock must be taken to get the counter.
-  const auto activeConnectionCountForLoadShedding =
-    getActiveConnectionCountForLoadShedding();
-  const auto connectionCountForLoadShedding =
-    getConnectionCountForLoadShedding();
-  if (activeConnectionCountForLoadShedding <
-      loadShedConfig_.getMaxActiveConnections() &&
-      connectionCountForLoadShedding < loadShedConfig_.getMaxConnections()) {
+  const auto activeConnLimit = loadShedConfig_.getMaxActiveConnections();
+  const auto totalConnLimit = loadShedConfig_.getMaxConnections();
+  const auto activeConnCount = getActiveConnectionCountForLoadShedding();
+  const auto totalConnCount = getConnectionCountForLoadShedding();
+
+  bool activeConnExceeded =
+      (activeConnLimit > 0) && (activeConnCount >= activeConnLimit);
+  bool totalConnExceeded =
+      (totalConnLimit > 0) && (totalConnCount >= totalConnLimit);
+  if (!activeConnExceeded && !totalConnExceeded) {
     return true;
   }
 
@@ -194,7 +198,7 @@ Acceptor::processEstablishedConnection(
         sslCtxManager_->getDefaultSSLCtx(), base_, fd));
     ++numPendingSSLConns_;
     ++totalNumPendingSSLConns_;
-    if (totalNumPendingSSLConns_ > accConfig_.maxConcurrentSSLHandshakes) {
+    if (numPendingSSLConns_ > accConfig_.maxConcurrentSSLHandshakes) {
       VLOG(2) << "dropped SSL handshake on " << accConfig_.name <<
         " too many handshakes in progress";
       auto error = SSLErrorEnum::DROPPED;
@@ -224,20 +228,21 @@ Acceptor::processEstablishedConnection(
   }
 }
 
-void
-Acceptor::startHandshakeManager(
+void Acceptor::startHandshakeManager(
     AsyncSSLSocket::UniquePtr sslSock,
     Acceptor* acceptor,
     const SocketAddress& clientAddr,
     std::chrono::steady_clock::time_point acceptTime,
     TransportInfo& tinfo) noexcept {
-  auto manager = new SSLAcceptorHandshakeManager(
-    acceptor,
-    clientAddr,
-    acceptTime,
-    tinfo
-  );
-  manager->start(std::move(sslSock));
+  if (accConfig_.allowInsecureConnectionsOnSecureServer) {
+    auto manager =
+        new TLSPlaintextHandshakeManager(this, clientAddr, acceptTime, tinfo);
+    manager->start(std::move(sslSock));
+  } else {
+    auto manager = new SSLAcceptorHandshakeManager(
+        acceptor, clientAddr, acceptTime, tinfo);
+    manager->start(std::move(sslSock));
+  }
 }
 
 void
@@ -268,14 +273,14 @@ Acceptor::sslConnectionReady(AsyncTransportWrapper::UniquePtr sock,
                              SecureTransportType secureTransportType,
                              TransportInfo& tinfo) {
   CHECK(numPendingSSLConns_ > 0);
+  --numPendingSSLConns_;
+  --totalNumPendingSSLConns_;
   connectionReady(
       std::move(sock),
       clientAddr,
       nextProtocol,
       secureTransportType,
       tinfo);
-  --numPendingSSLConns_;
-  --totalNumPendingSSLConns_;
   if (state_ == State::kDraining) {
     checkDrained();
   }
